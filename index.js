@@ -125,14 +125,52 @@ async function run() {
       }
     });
 
+    // app.post("/storeIntoCart", async (req, res) => {
+    //   try {
+    //     const product = req.body;
+    //     const result = await cartProductsCollection.insertOne(product);
+
+    //     res
+    //       .status(200)
+    //       .json({ success: true, message: "Product added to cart" });
+    //   } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json({
+    //       success: false,
+    //       message: "An error occurred while adding product to cart",
+    //     });
+    //   }
+    // });
     app.post("/storeIntoCart", async (req, res) => {
       try {
         const product = req.body;
-        const result = await cartProductsCollection.insertOne(product);
 
-        res
-          .status(200)
-          .json({ success: true, message: "Product added to cart" });
+        // Check if the product already exists in the cart collection
+        const existingProduct = await cartProductsCollection.findOne({
+          id: product.id,
+          buyerEmail: product.buyerEmail,
+        });
+
+        if (existingProduct) {
+          // If the product exists, update its quantity
+          const updatedQuantity = existingProduct.quantity + product.quantity;
+
+          await cartProductsCollection.updateOne(
+            { _id: existingProduct._id },
+            { $set: { quantity: updatedQuantity } }
+          );
+
+          res.status(200).json({
+            success: true,
+            message: "Product quantity updated in cart",
+          });
+        } else {
+          // If the product doesn't exist, insert it into the cart collection
+          await cartProductsCollection.insertOne(product);
+          res
+            .status(200)
+            .json({ success: true, message: "Product added to cart" });
+        }
       } catch (error) {
         console.error(error);
         res.status(500).json({
@@ -146,7 +184,7 @@ async function run() {
       const email = req.params.email;
       try {
         const cartProducts = await cartProductsCollection
-          .find({ email })
+          .find({ buyerEmail: email })
           .toArray();
         res.status(200).json(cartProducts);
       } catch (error) {
