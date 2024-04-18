@@ -108,38 +108,6 @@ async function run() {
       }
     });
 
-    app.get("/productByFlavour/:flavour", async (req, res) => {
-      const flavour = req.params.flavour;
-      const result = await productsCollection
-        .find({ flavorName: flavour })
-        .toArray();
-
-      if (result) {
-        // Product found
-        res.status(200).json(result);
-      } else {
-        // Product not found
-        res
-          .status(404)
-          .json({ message: `Product with id ${productId} not found` });
-      }
-    });
-
-    app.get("/cakeType/:category", async (req, res) => {
-      const category = req.params.category;
-      const result = await productsCollection
-        .find({ categoryName: category })
-        .toArray();
-
-      if (result) {
-        // Product found
-        res.status(200).json(result);
-      } else {
-        // Product not found
-        res.status(404).json({ message: `Product  not found` });
-      }
-    });
-
     app.get("/productDetails/:productId", async (req, res) => {
       const productId = req.params.productId;
       const result = await productsCollection.findOne({
@@ -188,7 +156,24 @@ async function run() {
         });
       }
     });
+    // delete a product from cart
+    app.delete("/cartProducts/:productId", async (req, res) => {
+      try {
+        const productId = req.params.productId;
 
+        // Delete the product
+        const result = await cartProductsCollection.deleteOne({
+          _id: new ObjectId(productId),
+        });
+
+        res
+          .status(200)
+          .json({ message: "Product deleted successfully", result });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      }
+    });
     // Insert the data into the "orders" collection
     app.post("/orderedProducts", async (req, res) => {
       try {
@@ -288,7 +273,6 @@ async function run() {
         res.status(500).json({ error: "Server error" });
       }
     });
-    // Admin Sign Up Route
 
     // Admin Login Route
     app.post("/adminLogin", async (req, res) => {
@@ -321,44 +305,34 @@ async function run() {
         res.status(500).json({ error: "Server error" });
       }
     });
+    app.put("/resetAdminPassword/:email", async (req, res) => {
+      try {
+        const { email } = req.params;
+        const { newPassword } = req.body;
 
-    // // Admin Authentication Route
-    // app.get("/checkAdmin", async (req, res) => {
-    //   try {
-    //     const token = req.headers.authorization;
-    //     console.log(token);
-    //     if (!token) {
-    //       return res.status(401).json({ error: "Token is required" });
-    //     }
+        // Check if user exists
+        const user = await adminsCollection.findOne({ email });
+        if (!user) {
+          return res.status(404).json({ message: "Admin not found" });
+        }
 
-    //     // Verify the token
-    //     jwt.verify(token, "SECRET_KEY_ADMIN", async (err, decoded) => {
-    //       if (err) {
-    //         console.log(err);
-    //         return res.status(401).json({ error: "Invalid token" });
-    //       }
+        // Generate new password
 
-    //       const adminId = decoded.id;
-    //       console.log("This is admin", adminId);
-    //       // Fetch admin details from the database using the admin ID
-    //       const admin = await adminsCollection.findOne({
-    //         _id: new ObjectId(adminId),
-    //       });
-    //       console.log("This is admin", admin);
-    //       if (!admin) {
-    //         return res.status(404).json({ error: "Admin not found" });
-    //       }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    //       // If admin found, return admin details
-    //       return res
-    //         .status(200)
-    //         .json({ data: admin, message: "Authentication success" });
-    //     });
-    //   } catch (err) {
-    //     console.error(err);
-    //     res.status(500).json({ error: "Server error" });
-    //   }
-    // });
+        // Update user's password
+        await adminsCollection.updateOne(
+          { email },
+          { $set: { password: hashedPassword } }
+        );
+
+        // Send new password to user
+        res.json({ message: `Your new password is: ${newPassword}` });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      }
+    });
 
     // sign up route
     app.post("/signUp", async (req, res) => {
@@ -432,10 +406,9 @@ async function run() {
     });
     // Login Route
     app.post("/login", async (req, res) => {
-      console.log("hitted");
       try {
         const { email, password } = req.body;
-        console.log(email, password);
+
         // Check if the email exists in the database
         const user = await usersCollection.findOne({ email });
         if (!user) {
@@ -447,12 +420,12 @@ async function run() {
         if (!passwordMatch) {
           return res.status(401).json({ error: "Invalid email or password" });
         }
-        console.log("hitted");
+
         // Generate JWT token
         const token = jwt.sign({ id: user._id }, "SECRET_KEY", {
           expiresIn: "1d",
         });
-
+        console.log(token);
         // Return token to the client
         return res
           .status(200)
@@ -462,26 +435,8 @@ async function run() {
         res.status(500).json({ error: "Server error" });
       }
     });
-
-    // check user or admin
-    app.get("/users/:email", async (req, res) => {
-      try {
-        const email = req.params.email;
-        const user = await usersCollection.findOne({ email });
-        if (!user) {
-          return res.status(404).json({ message: "User not found" });
-        }
-
-        return res.status(200).json(user);
-      } catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Server error" });
-      }
-    });
-
     //  forgot password
-
-    app.post("/reset-password/:email", async (req, res) => {
+    app.put("/resetUserPassword/:email", async (req, res) => {
       try {
         const { email } = req.params;
         const { newPassword } = req.body;
@@ -537,8 +492,6 @@ async function run() {
         res.status(500).send("Server error");
       }
     });
-
-    const jwt = require("jsonwebtoken");
   } finally {
   }
 }
