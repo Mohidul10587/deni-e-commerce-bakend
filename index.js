@@ -10,8 +10,8 @@ const bcrypt = require("bcrypt");
 const SECRET_KEY =
   "b9682406b6545de642ff8026527300b35ec4d70803b4fe40ce37c9ea292634bcb3829fad2e685531abc6bc15e6243f2e06e46e8d9c9c28a407c8f01af5761378";
 
-const uri = "mongodb://127.0.0.1:27017/e_commerce";
-// const uri = `mongodb+srv://mohid10587:Usz0E31KP3fyyBQ3@cluster5.4relj71.mongodb.net/demo_e_commerce?retryWrites=true&w=majority`;
+// const uri = "mongodb://127.0.0.1:27017/e_commerce";
+const uri = `mongodb+srv://mohid10587:Usz0E31KP3fyyBQ3@cluster5.4relj71.mongodb.net/demo_e_commerce?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
